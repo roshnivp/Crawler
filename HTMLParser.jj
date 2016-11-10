@@ -1,0 +1,229 @@
+//Written By Prathiba and Lakshmi
+
+options
+{
+  DEBUG_PARSER = true;
+  UNICODE_INPUT=true;
+  LOOKAHEAD=1;
+  OUTPUT_DIRECTORY="com/sjsu/crawler/parsergrammar";
+  NODE_PACKAGE ="com.sjsu.crawler.parsergrammar";
+  STATIC = false;
+
+}
+
+PARSER_BEGIN(MyNewGrammar)
+package com.sjsu.crawler.parsergrammar;
+import java.io.*;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.Date;
+import java.text.SimpleDateFormat;
+import org.apache.commons.lang.StringEscapeUtils;
+
+public class MyNewGrammar
+{
+  static String content = null;
+  static int i=0;
+  public static void grammar(String purl)
+  {
+    URL url = null;
+    InputStream is = null;
+    BufferedReader br;
+    String line;
+
+	//download html code from URL
+	
+    try {
+        //url = new URL("https://www.linkedin.com/pulse/daily-pulse-gm-silicon-valley-take-carl-icahns-next-big-john-c-abell");
+        url =new URL(purl);
+        is = url.openStream();
+        br = new BufferedReader(new InputStreamReader(is));
+        
+       //PrintWriter inputFile = new PrintWriter("InputCode.txt","UTF-8");
+
+		PrintWriter inputFile = new PrintWriter("/Users/milcegeorge/Documents/Crwaler/InputCode.txt", "UTF-8");
+
+		//write html to file
+		
+        while ((line = br.readLine()) != null) {
+          	inputFile.write(line);
+            //System.out.println(line);
+        }
+        
+        inputFile.close();
+    } catch (MalformedURLException mue) {
+         mue.printStackTrace();
+    } catch (IOException ioe) {
+         ioe.printStackTrace();
+    } finally {
+        try {
+          	
+            if (is != null) is.close();
+        } catch (IOException ioe) {
+            
+        }
+    }
+
+	//extract content from the input file
+	
+    //File file = new File("InputCode.txt");
+
+     File file = new File("/Users/milcegeorge/Documents/Crwaler/InputCode.txt");
+    try
+    {
+      FileReader reader = new FileReader(file);
+      char [] chars = new char [(int) file.length()];
+      reader.read(chars);
+      content = new String(chars);
+      reader.close();
+    }
+    catch (IOException e)
+    {
+      e.printStackTrace();
+    }
+
+   //Initialize parser and the reader for the content
+    //System.out.println(content);
+    
+    Reader sr = new StringReader(content);
+    BufferedWriter writer = null;
+    MyNewGrammar parser = new MyNewGrammar(sr);
+    
+    try
+    {
+      //parse and write to output file
+      
+      parser.startParser();
+      String blank = " ";
+      fileOutput fp = new fileOutput();
+      String final_file_data = fp.finalTokens.toString();
+      
+      
+      
+    // String FileName1 = new SimpleDateFormat("yyyyMMddhhmmssssss'.txt'").format(new Date());
+      
+     // writer = new BufferedWriter(new FileWriter("/Users/milcegeorge/Documents/Crwaler/parserout/par"
+     //+System.currentTimeMillis()+".txt"));
+    
+     	String finalpath="C:/Users/milcegeorge/Documents/Crwaler/parserout/par"+(++i)+".txt";
+     	writer = new BufferedWriter(new FileWriter("/Users/milcegeorge/Documents/Crwaler/parserout/par"
+     +i+".txt"));
+     
+       String javastr = StringEscapeUtils.unescapeHtml(final_file_data);
+	   String javastri= javastr.replaceAll("\\P{InBasic_Latin}", "");
+       javastri=javastri.replaceAll("\\p{M}", "");
+       
+       
+        writer.write(finalpath);
+        writer.newLine();
+         //writer.write(System.getProperty( "line.separator" ));
+ 		writer.write(javastri);
+ 	 //writer = new BufferedWriter(new FileWriter("ParserOut/ParsedOutput-" + url.hashCode() +".txt"));
+     
+     
+    }
+    catch (ParseException ex)
+    {
+      ex.printStackTrace();
+    }
+    catch (IOException ee)
+    {
+    }
+    finally
+    {
+      try
+      {
+        if (writer != null) 
+        writer.close();
+      }
+      catch (IOException e)
+      {
+      }
+    }
+  }
+}
+
+PARSER_END(MyNewGrammar)
+
+
+int startParser():
+{
+}
+{
+  //the entire doc is pushed into this function
+  text()
+	( < STARTTEXT >  (LOOKAHEAD(1) < nested_STARTTEXT > | extractText() | < ENDTEXT > | < OTHERTAGS >)* text() )*
+< EOF >
+ {
+    System.out.println("Done Parsing!!!");
+    return - 1;
+ } 
+}
+
+TOKEN_MGR_DECLS : {
+    static int TagNestingDepth = 0 ;
+}
+void text() :
+{
+
+}
+{
+  (< STRING >)*
+}
+void extractText() :
+{
+    
+  Token t;
+}
+{
+  (t = < TEXT > 
+  {
+    //PRINTING OUTPUT TO CONSOLE
+   // System.out.println(t.image);
+
+    
+    //PRINTING TO A FILE
+    
+	fileOutput fp1 = new fileOutput();	fp1.printIt(t.image);
+	
+  })
+}
+
+//REQUIRED_TEXT state is used to extract the text.
+<DEFAULT> SKIP: { < ~[ ] > }
+<DEFAULT> TOKEN : 
+{
+  < STARTTEXT : ("<p" (~[">"])*">") | ("<a " (~[">"])*">" | "<a>") | ("<h"(["1"-"9"])(~[">"])*">") |"<title>" | "<img">
+  { TagNestingDepth = 1;} : REQUIRED_TEXT
+| < STRING : (["A"-"Z", "a"-"z", "0"-"9"," "-"/", ":","\"","'","’",";","=","?","@","[","]"])+ >
+
+}
+
+<REQUIRED_TEXT>SKIP :
+{ 
+  < " " >
+| < "\t" >
+| < "\n" >
+| < "\r" >
+| < "\r\n" >
+| < "\f" >
+}  
+
+< REQUIRED_TEXT > TOKEN:
+{
+  < nested_STARTTEXT : ("<p" (~[">"])*">") | ("<a" (~[">"])*">") | ("<h"(["1"-"9"])(~[">"])*">") |"<img" | "<b>" | "<em>" | "<i>" | "<blockquote>" | "<big>" | "<small>" |"<strong>"|"<sub>" | "<sup>" | "<ins>" | "<del>" | "<mark>" | "<italic>" | "<bold>" | "<strike>" | "<title>">
+  {
+     TagNestingDepth +=1; 
+   }
+ }
+< REQUIRED_TEXT > TOKEN:
+{
+  < ENDTEXT : ">" | "</p>" | "</a>" | ("</h"(["1"-"9"])">")| "</b>" | "</em>" | "</i>" | "</small>" |"</big>" | "</blockquote>" |"</strong>"|"</sub>" | "</sup>" | "</ins>" | "</del>" | "</mark>" | "</italic>"| "</bold>" | "</strike>" | "</title>">
+  {
+    TagNestingDepth -=1;
+    SwitchTo(TagNestingDepth == 0 ? DEFAULT : REQUIRED_TEXT);
+  }
+| < OTHERTAGS : "<" (< TEXT >)* ">" > : DEFAULT
+| <  TEXT : (["A"-"Z", "a"-"z", "0"-"9"," "-"/", ":",";","=","?","@","["-"`","{"-"~","'"]|(<UNICODE_TEXT >))+ >
+| < UNICODE_TEXT : (["\u007F" - "\uFFFF"])+ >
+}
